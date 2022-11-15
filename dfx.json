@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "dfx": "0.11.2",
+  "canisters": {
+    "ext_based_721_backend": {
+      "type": "rust",
+      "package": "ext_based_721_backend",
+      "candid": "src/ext_based_721_backend/ext_based_721_backend.did"
+    },
+    "ext_based_721_frontend": {
+      "type": "assets",
+      "source": [
+        "src/ext_based_721_frontend/assets"
+      ],
+      "dependencies": [
+        "ext_based_721_backend"
+      ]
+    }
+  },
+  "defaults": {
+    "build": {
+      "packtool": "",
+      "args": ""
+    }
+  },
+  "networks": {
+    "local": {
+      "bind": "127.0.0.1:8000",
+      "type": "ephemeral"
+    }
+  }
+}

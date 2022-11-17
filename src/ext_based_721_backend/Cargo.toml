@@ -5,10 +5,10 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[lib]
-crate-type = ["cdylib"]
-
 [dependencies]
 candid = "0.7.14"
 ic-cdk = "0.5.2"
 ic-cdk-macros = "0.5.2"
+cap-sdk = { git = "https://github.com/Psychedelic/cap.git", branch = "main" }
+serde = "1.0.132"
+anyhow = "1.0.65"

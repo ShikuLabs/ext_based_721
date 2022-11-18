@@ -13,3 +13,4 @@ cap-sdk = { git = "https://github.com/Psychedelic/cap.git", branch = "main" }
 serde = "1"
 serde_json = "1"
 anyhow = "1"
+ic-ledger-types="0.1.1"

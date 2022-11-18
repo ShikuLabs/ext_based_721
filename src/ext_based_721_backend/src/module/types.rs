@@ -1,7 +1,8 @@
+use crate::token_identifier;
 use ic_cdk::export::candid::{CandidType, Deserialize, Int, Nat};
 use ic_cdk::export::Principal;
-use std::collections::{HashSet};
-use crate::token_identifier;
+use serde::Serialize;
+use std::collections::HashSet;
 
 #[derive(CandidType, Deserialize)]
 pub struct InitArgs {
@@ -12,7 +13,7 @@ pub struct InitArgs {
     pub cap: Option<Principal>,
 }
 
-#[derive(CandidType, Default,Deserialize)]
+#[derive(CandidType, Default, Deserialize)]
 pub struct MetaData {
     pub name: Option<String>,
     pub logo: Option<String>,
@@ -32,7 +33,7 @@ pub struct Status {
 
 pub type TokenIdentifier = Nat;
 
-#[derive(CandidType, Deserialize, Clone)]
+#[derive(CandidType, Deserialize, Serialize, Clone)]
 pub enum GeneralValue {
     BoolContent(bool),
     TextContent(String),
@@ -96,8 +97,17 @@ pub enum User {
     principal(Principal),
 }
 
+impl User {
+    pub fn aid(user: User) -> AccountIdentifier {
+        match user {
+            Self::address(aid) => aid.clone(),
+            Self::principal(pid) => pid2aid(&pid),
+        }
+    }
+}
+
 #[derive(Debug, CandidType, Clone, Deserialize)]
-pub struct  AllowanceRequest {
+pub struct AllowanceRequest {
     pub owner: User,
     pub spender: Principal,
     pub token: TokenIdentifier__1,
@@ -110,7 +120,7 @@ pub struct MintRequest {
 }
 
 #[derive(Debug, CandidType, Clone, Deserialize)]
-pub struct  ApproveRequest {
+pub struct ApproveRequest {
     pub allowance: Balance,
     pub spender: Principal,
     pub subaccount: Option<SubAccount>,
@@ -148,7 +158,7 @@ pub enum CommonError {
 }
 
 #[derive(Debug, CandidType, Clone, Deserialize)]
-pub struct  MetaDataFungibleDetails {
+pub struct MetaDataFungibleDetails {
     decimals: u8,
     metadata: Option<Vec<u8>>,
     name: String,
@@ -161,7 +171,7 @@ pub struct MetaDataNonFungibleDetails {
 }
 
 #[derive(Debug, CandidType, Clone, Deserialize)]
-pub enum MetaDataYumi {
+pub enum TokenMetaDataExt {
     #[allow(non_camel_case_types)]
     fungible(MetaDataFungibleDetails),
     #[allow(non_camel_case_types)]
@@ -169,7 +179,7 @@ pub enum MetaDataYumi {
 }
 
 #[derive(Debug, CandidType, Clone, Deserialize)]
-pub struct  Listing {
+pub struct Listing {
     locked: Option<Time>,
     price: u64,
     seller: Principal,
@@ -187,7 +197,7 @@ pub enum TransferResponse {
 }
 
 #[derive(Debug, CandidType, Clone, Deserialize)]
-pub enum  TransferResponseDetails{
+pub enum TransferResponseDetails {
     CannotNotify(AccountIdentifier),
     InsufficientBalance,
     InvalidToken(String),
@@ -196,8 +206,8 @@ pub enum  TransferResponseDetails{
     Unauthorized(AccountIdentifier),
 }
 
-#[derive(Debug, Clone,CandidType, Deserialize)]
-pub struct  TransferRequest {
+#[derive(Debug, Clone, CandidType, Deserialize)]
+pub struct TransferRequest {
     pub amount: Balance,
     pub from: User,
     pub memo: Memo,
@@ -224,7 +234,7 @@ pub enum Result__1 {
     #[allow(non_camel_case_types)]
     err(CommonError),
     #[allow(non_camel_case_types)]
-    ok(MetaDataYumi),
+    ok(TokenMetaDataExt),
 }
 
 #[derive(Debug, Clone, CandidType, Deserialize)]
@@ -246,7 +256,7 @@ pub enum Result_1 {
 }
 
 #[derive(Debug, Clone, CandidType, Deserialize)]
-pub struct ResultDetail(pub TokenIndex, pub Option<Listing>, pub Option<Vec<u8>>); 
+pub struct ResultDetail(pub TokenIndex, pub Option<Listing>, pub Option<Vec<u8>>);
 
 #[derive(Debug, Clone, CandidType, Deserialize)]
 pub enum NFTResult {
@@ -259,7 +269,7 @@ pub enum NFTResult {
 pub type Balance__1 = Nat;
 
 #[derive(Debug, Clone, CandidType, Deserialize)]
-pub enum  BalanceResponse {
+pub enum BalanceResponse {
     #[allow(non_camel_case_types)]
     err(CommonError__1),
     #[allow(non_camel_case_types)]
@@ -271,3 +281,12 @@ pub struct BalanceRequest {
     user: User,
 }
 
+pub fn pid2aid(pid: &Principal) -> String {
+    let sub_acc = ic_ledger_types::Subaccount([0u8; 32]);
+    let account_id = ic_ledger_types::AccountIdentifier::new(pid, &sub_acc);
+    //  match AccountIdentifier_shiku::from_hex(&account_id.to_string()) {
+    //      Ok(shiku) => shiku,
+    //      Err(_) => AccountIdentifier_shiku::default(),
+    //  }
+    account_id.to_string()
+}

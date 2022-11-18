@@ -8,17 +8,6 @@ use crate::module::dip721;
 use crate::module::token_identifier;
 use crate::module::types::*;
 
-pub fn pid2aid(pid: &Principal) -> String {
-     let sub_acc = ic_ledger_types::Subaccount([0u8; 32]);
-     let account_id = ic_ledger_types::AccountIdentifier::new(pid, &sub_acc);
-    //  match AccountIdentifier_shiku::from_hex(&account_id.to_string()) {
-    //      Ok(shiku) => shiku,
-    //      Err(_) => AccountIdentifier_shiku::default(),
-    //  }
-    account_id.to_string()
- }
-
-
 #[init]
 #[candid_method(init)]
 fn init(args: Option<InitArgs>) {
@@ -34,6 +23,10 @@ fn init_prop() -> Vec<prop::PropMetadata> {
 #[update]
 #[candid_method(update)]
 fn mintNFT(mint_request: MintRequest, class: Option<String>) -> TokenIndex {
+    mint_internal(mint_request, class)
+}
+
+fn mint_internal(mint_request: MintRequest, class: Option<String>) -> TokenIndex {
     let token_id = dip721::new_token_id();
 
     let pid = ic_cdk::api::id();
@@ -78,14 +71,72 @@ fn mintNFT(mint_request: MintRequest, class: Option<String>) -> TokenIndex {
     res.unwrap().to_string().parse::<u32>().unwrap()
 }
 
-use crate::dip721::TokenMetadata;
-
 #[query]
 #[candid_method(query)]
-async fn metadata(token: String)-> Result<TokenMetadata, CommonError> {
-    dip721::token_metadata(token)
-}
+pub fn metadata(token: token_identifier::TokenIdentifier) -> Option<TokenMetaDataExt> {
+    let token_id = match token_identifier::decode_token_id(&token) {
+        Ok(obj) => obj.index.get_value(),
+        Err(e) => return None,
+    };
+    let metadata = dip721::dip721_token_metadata(Nat::from(token_id).to_owned());
+    match metadata {
+        Ok(data) => {
+            let nest_value = GeneralValue::NestedContent(vec![
+                (
+                    "token_identifier".into(),
+                    GeneralValue::NatContent(data.token_identifier),
+                ),
+                (
+                    "is_burned".into(),
+                    GeneralValue::BoolContent(data.is_burned),
+                ),
+                (
+                    "properties".into(),
+                    GeneralValue::NestedContent(data.properties),
+                ),
+                (
+                    "minted_at".into(),
+                    GeneralValue::Nat64Content(data.minted_at),
+                ),
+                ("minted_by".into(), GeneralValue::Principal(data.minted_by)),
+                (
+                    "transferred_at".into(),
+                    GeneralValue::Nat64Content(data.transferred_at.unwrap()),
+                ),
+                (
+                    "transferred_by".into(),
+                    GeneralValue::Principal(data.transferred_by.unwrap()),
+                ),
+                (
+                    "approved_at".into(),
+                    GeneralValue::Nat64Content(data.approved_at.unwrap()),
+                ),
+                (
+                    "approved_by".into(),
+                    GeneralValue::Principal(data.approved_by.unwrap()),
+                ),
+                (
+                    "burned_at".into(),
+                    GeneralValue::Nat64Content(data.burned_at.unwrap()),
+                ),
+                (
+                    "burned_by".into(),
+                    GeneralValue::Principal(data.burned_by.unwrap()),
+                ),
+            ]);
 
+            let value = match serde_json::to_vec(&nest_value) {
+                Ok(v) => Some(v),
+                Err(_) => None,
+            };
+
+            Some(TokenMetaDataExt::nonfungible({
+                MetaDataNonFungibleDetails { metadata: value }
+            }))
+        }
+        Err(_) => None,
+    }
+}
 
 #[update]
 #[candid_method(update)]
@@ -112,10 +163,14 @@ fn burn(token_identifier: TokenIdentifier) -> Result<Nat, NftError> {
 #[update]
 #[candid_method(update)]
 fn transfer(transfer_request: TransferRequest) -> TransferResponse {
+    transfer_internal(transfer_request)
+}
+
+fn transfer_internal(transfer_request: TransferRequest) -> TransferResponse {
     let from = transfer_request.from;
     let to = transfer_request.to;
     let token = transfer_request.token;
-    let from_pid = match from {
+    let from_pid = match from.clone() {
         User::principal(pid) => pid,
         User::address(_aid) => Principal::anonymous(),
     };
@@ -125,7 +180,16 @@ fn transfer(transfer_request: TransferRequest) -> TransferResponse {
     };
     let token_obj = token_identifier::decode_token_id(&token).unwrap();
     let token_index = Nat::from(token_obj.index.get_value());
-    TransferResponse::ok(dip721::dip721_transfer_from(from_pid, to_pid, token_index).unwrap())
+
+    match dip721::dip721_transfer_from(from_pid, to_pid, token_index) {
+        Ok(resp) => TransferResponse::ok(resp),
+        Err(NftError::UnauthorizedOwner) => TransferResponse::err(
+            TransferResponseDetails::Unauthorized(User::aid(from.clone())),
+        ),
+        Err(_) => {
+            TransferResponse::err(TransferResponseDetails::Other(String::from("Unkown Error")))
+        }
+    }
 }
 
 #[update]
@@ -139,6 +203,34 @@ fn add(args: String) -> bool {
     prop::with_mut(|props| props.push(prop));
 
     true
+}
+
+#[update]
+#[candid_method(update)]
+fn batch_mint(
+    mint_request: MintRequest,
+    class: Option<String>,
+    num: Option<u32>,
+) -> Vec<TokenIndex> {
+    let mut tids = vec![];
+
+    if let Some(num) = num {
+        for _i in 0..num {
+            let tid = mint_internal(mint_request.clone(), class.clone());
+            tids.push(tid)
+        }
+    };
+    tids
+}
+
+fn batch_transfer(transfer_request: TransferRequest, num: Option<u32>) -> TransferResponse {
+    if let Some(num) = num {
+        for _i in 0..num {
+            transfer_internal(transfer_request.clone());
+        }
+    };
+
+    TransferResponse::ok(Nat::from(num.unwrap()))
 }
 
 // fn class(tid: TokenIdentifier) -> String {

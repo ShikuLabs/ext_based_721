@@ -1,23 +1,17 @@
 use crate::module::ledger;
 use crate::module::token_identifier;
 use crate::module::types::{
-    GeneralValue, 
-    InitArgs, 
-    NftError, 
-    TokenIdentifier, 
-    TokenMetaData, 
-    MetaDataNonFungibleDetails,
-    MetaDataFungibleDetails,
-    CommonError
+    CommonError, GeneralValue, InitArgs, MetaDataFungibleDetails, MetaDataNonFungibleDetails,
+    NftError, TokenIdentifier, TokenMetaData, TokenMetaDataExt,
 };
 use cap_sdk::{insert_sync, DetailValue, IndefiniteEvent};
 use ic_cdk::api::time;
 use ic_cdk::export::candid::Nat;
+use ic_cdk::export::candid::{CandidType, Deserialize};
 use ic_cdk::export::Principal;
 use std::cell::RefCell;
 use std::ops::Not;
 use std::sync::atomic::AtomicU32;
-use ic_cdk::export::candid::{CandidType, Deserialize};
 
 use serde_json;
 thread_local! {
@@ -260,61 +254,8 @@ pub fn dip721_approve(
     })
 }
 
-pub fn dip721_token_metadata(
-    token_identifier: TokenIdentifier,
-) -> Result<TokenMetaData, NftError> {
+pub fn dip721_token_metadata(token_identifier: TokenIdentifier) -> Result<TokenMetaData, NftError> {
     ledger::with(|ledger| ledger.token_metadata(&token_identifier).cloned())
 }
-
-pub fn token_metadata (token :token_identifier::TokenIdentifier) -> Result<TokenMetadata, CommonError> {
-    let token_id = match token_identifier::decode_token_id(&token){
-        Ok(obj) => {obj.index.get_value()}
-        Err(e) => return Err(e),
-    };
-    let metadata = dip721_token_metadata(Nat::from(token_id).to_owned());
-    let res = match metadata {
-        Ok(data)  => {
-        unsafe {
-            let nest_value = GeneralValue::NestedContent(vec![("token_identifier".into(), GeneralValue::NatContent(data.token_identifier)),
-            ("is_burned".into(), GeneralValue::BoolContent(data.is_burned)),
-            ("properties".into(), GeneralValue::NestedContent(data.properties)),
-            ("minted_at".into(), GeneralValue::Nat64Content(data.minted_at)),
-            ("minted_by".into(), GeneralValue::Principal(data.minted_by)),
-            ("transferred_at".into(), GeneralValue::Nat64Content(data.transferred_at.unwrap())),
-            ("transferred_by".into(), GeneralValue::Principal(data.transferred_by.unwrap())),
-            ("approved_at".into(), GeneralValue::Nat64Content(data.approved_at.unwrap())),
-            ("approved_by".into(), GeneralValue::Principal(data.approved_by.unwrap())),
-            ("burned_at".into(), GeneralValue::Nat64Content(data.burned_at.unwrap())),
-            ("burned_by".into(), GeneralValue::Principal(data.burned_by.unwrap())),
-            ]);
-            let mut vec_prop = Vec::new();
-            let properties = vec![("metadata".to_string(), nest_value)];
-            properties.iter().for_each(|(_,v)| {
-            vec_prop.push(v.to_owned());
-        });
-        let generic_str = serde_json::to_string(&vec_prop).expect("Can not seralized the string");
-        let vec_u8 = generic_str.as_bytes().to_vec();
-        TokenMetadata::nonfungible({
-            MetaDataNonFungibleDetails {
-                metadata: Some(vec_u8),
-            }
-        })}
-       
-
-    }
-        Err(_) => return Err(CommonError::InvalidToken(token)),
-        };
-        Ok(res)
-    
- }
-
- #[derive(Debug, CandidType, Clone, Deserialize)]
- pub enum TokenMetadata {
-     #[allow(non_camel_case_types)]
-     fungible(MetaDataFungibleDetails),
-     #[allow(non_camel_case_types)]
-     nonfungible(MetaDataNonFungibleDetails),
- }
- 
 
 //pub fn dip721_owner_of(token_identifier: )

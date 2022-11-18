@@ -1,19 +1,18 @@
-
 use crate::module::ledger;
-use crate::module::types::{TokenMetaData, NftError, TokenIdentifier, InitArgs, GeneralValue};
-use ic_cdk::api::{time};
+use crate::module::types::{GeneralValue, InitArgs, NftError, TokenIdentifier, TokenMetaData};
 use cap_sdk::{insert_sync, DetailValue, IndefiniteEvent};
-use ic_cdk::export::candid::{Nat};
+use ic_cdk::api::time;
+use ic_cdk::export::candid::Nat;
 use ic_cdk::export::Principal;
-use std::sync::atomic::AtomicU64; 
 use std::cell::RefCell;
 use std::ops::Not;
+use std::sync::atomic::AtomicU32;
 
 thread_local! {
-    static TID: RefCell<AtomicU64> = RefCell::new(AtomicU64::new(1));
+    static TID: RefCell<AtomicU32> = RefCell::new(AtomicU32::new(1));
 }
 
-pub fn new_token_id() -> u64 {
+pub fn new_token_id() -> u32 {
     TID.with(|tid| {
         let token = tid.borrow_mut();
         let new_id = token.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
@@ -28,7 +27,6 @@ pub fn dip721_init(args: Option<InitArgs>) {
 pub fn dip721_total_supply() -> Nat {
     ledger::with(|ledger| Nat::from(ledger.tokens_count()))
 }
-
 
 pub fn dip721_balance_of(owner: Principal) -> Result<Nat, NftError> {
     ledger::with(|ledger| {
@@ -49,16 +47,14 @@ pub fn dip721_transfer_from(
             insert_sync(IndefiniteEvent {
                 caller: ic_cdk::api::caller(),
                 operation: "verify owner".into(),
-                details: vec![
-                    ("owner".into(), DetailValue::from(owner.clone())),
-                ],
+                details: vec![("owner".into(), DetailValue::from(owner.clone()))],
             });
             return Err(NftError::UnauthorizedOwner);
         }
         let old_owner = match ledger.owner_of(&token_identifier).ok() {
             Some(owner) => owner,
             None => return Err(NftError::OwnerNotFound),
-        }; 
+        };
         let old_operator = match ledger.operator_of(&token_identifier).ok() {
             Some(operator) => operator,
             None => return Err(NftError::OperatorNotFound),
@@ -67,23 +63,25 @@ pub fn dip721_transfer_from(
             insert_sync(IndefiniteEvent {
                 caller: ic_cdk::api::caller(),
                 operation: "verify old owner".into(),
-                details: vec![
-                    ("old owner".into(), DetailValue::from(old_owner.unwrap().clone())),
-                ],
+                details: vec![(
+                    "old owner".into(),
+                    DetailValue::from(old_owner.unwrap().clone()),
+                )],
             });
-            return Err(NftError::UnauthorizedOwner); 
+            return Err(NftError::UnauthorizedOwner);
         }
         if old_operator.ne(&Some(caller)) {
             insert_sync(IndefiniteEvent {
                 caller: ic_cdk::api::caller(),
                 operation: "verify old operator".into(),
-                details: vec![
-                    ("old operator".into(), DetailValue::from(old_operator.unwrap().clone())),
-                ],
+                details: vec![(
+                    "old operator".into(),
+                    DetailValue::from(old_operator.unwrap().clone()),
+                )],
             });
-            return Err(NftError::UnauthorizedOperator);  
+            return Err(NftError::UnauthorizedOperator);
         }
-            
+
         ledger.update_owner_cache(&token_identifier, old_owner, Some(to));
         ledger.update_operator_cache(&token_identifier, old_operator, Some(to));
         ledger.transfer(caller, &token_identifier, Some(to));
@@ -116,11 +114,12 @@ pub fn dip721_mint(
             insert_sync(IndefiniteEvent {
                 caller: ic_cdk::api::caller(),
                 operation: "verify token exist".into(),
-                details: vec![
-                    ("existed token identifier".into(), DetailValue::from(token_identifier.clone())),
-                ],
+                details: vec![(
+                    "existed token identifier".into(),
+                    DetailValue::from(token_identifier.clone()),
+                )],
             });
-            return Err(NftError::ExistedNFT); 
+            return Err(NftError::ExistedNFT);
         }
         ledger.add_token_metadata(
             token_identifier.clone(),
@@ -164,16 +163,17 @@ pub fn dip721_burn(token_identifier: TokenIdentifier) -> Result<Nat, NftError> {
         let old_owner = match ledger.owner_of(&token_identifier).ok() {
             Some(owner) => owner,
             None => return Err(NftError::OwnerNotFound),
-        }; 
+        };
         if old_owner.ne(&Some(caller)) {
             insert_sync(IndefiniteEvent {
                 caller: ic_cdk::api::caller(),
                 operation: "verify old owner".into(),
-                details: vec![
-                    ("unauthozied owner".into(), DetailValue::from(caller.clone())),
-                ],
+                details: vec![(
+                    "unauthozied owner".into(),
+                    DetailValue::from(caller.clone()),
+                )],
             });
-            return Err(NftError::UnauthorizedOwner); 
+            return Err(NftError::UnauthorizedOwner);
         }
         let old_operator = match ledger.operator_of(&token_identifier).ok() {
             Some(operator) => operator,
@@ -196,32 +196,34 @@ pub fn dip721_burn(token_identifier: TokenIdentifier) -> Result<Nat, NftError> {
     })
 }
 
-pub fn dip721_approve(operator: Principal, token_identifier: TokenIdentifier) -> Result<Nat, NftError> {
+pub fn dip721_approve(
+    operator: Principal,
+    token_identifier: TokenIdentifier,
+) -> Result<Nat, NftError> {
     ledger::with_mut(|ledger| {
         let caller = ic_cdk::api::caller();
         if operator.eq(&caller) {
             insert_sync(IndefiniteEvent {
                 caller: ic_cdk::api::caller(),
                 operation: "verify caller".into(),
-                details: vec![
-                    ("operator".into(), DetailValue::from(operator.to_string())),
-                ],
+                details: vec![("operator".into(), DetailValue::from(operator.to_string()))],
             });
             return Err(NftError::SelfApprove);
         };
         let owner = match ledger.owner_of(&token_identifier).ok() {
             Some(owner) => owner,
             None => return Err(NftError::OwnerNotFound),
-        }; 
+        };
         if owner.ne(&Some(caller)) {
             insert_sync(IndefiniteEvent {
                 caller: ic_cdk::api::caller(),
                 operation: "verify owner".into(),
-                details: vec![
-                    ("owner".into(), DetailValue::from(owner.unwrap().to_string())),
-                ],
+                details: vec![(
+                    "owner".into(),
+                    DetailValue::from(owner.unwrap().to_string()),
+                )],
             });
-        return Err(NftError::UnauthorizedOwner);
+            return Err(NftError::UnauthorizedOwner);
         }
         ledger.update_operator_cache(
             &token_identifier,

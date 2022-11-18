@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use cap_sdk::{handshake};
 
 use ic_cdk::api::{time};
-use ic_cdk::export::candid::{CandidType, Deserialize, Int, Nat};
+use ic_cdk::export::candid::{CandidType, Deserialize, Nat};
 use ic_cdk::export::Principal;
 
 use crate::module::types::*;

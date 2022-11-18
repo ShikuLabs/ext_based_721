@@ -8,10 +8,27 @@ use crate::module::dip721;
 use crate::module::token_identifier;
 use crate::module::types::*;
 
+pub fn pid2aid(pid: &Principal) -> String {
+     let sub_acc = ic_ledger_types::Subaccount([0u8; 32]);
+     let account_id = ic_ledger_types::AccountIdentifier::new(pid, &sub_acc);
+    //  match AccountIdentifier_shiku::from_hex(&account_id.to_string()) {
+    //      Ok(shiku) => shiku,
+    //      Err(_) => AccountIdentifier_shiku::default(),
+    //  }
+    account_id.to_string()
+ }
+
+
 #[init]
 #[candid_method(init)]
 fn init(args: Option<InitArgs>) {
     dip721::dip721_init(args)
+}
+
+#[update]
+#[candid_method(update)]
+fn init_prop() -> Vec<prop::PropMetadata> {
+    prop::init()
 }
 
 #[update]
@@ -26,6 +43,7 @@ fn mintNFT(mint_request: MintRequest, class: Option<String>) -> TokenIndex {
 
     let token_obj = token_identifier::decode_token_id(&encoded_token).unwrap();
     let arg_mint = Nat::from(token_obj.index.get_value());
+    prop::add_token(&arg_mint, &encoded_token);
 
     let to = match mint_request.to {
         User::principal(pid) => pid,
@@ -59,6 +77,15 @@ fn mintNFT(mint_request: MintRequest, class: Option<String>) -> TokenIndex {
     let res = dip721::dip721_mint(to, arg_mint, properties);
     res.unwrap().to_string().parse::<u32>().unwrap()
 }
+
+use crate::dip721::TokenMetadata;
+
+#[query]
+#[candid_method(query)]
+async fn metadata(token: String)-> Result<TokenMetadata, CommonError> {
+    dip721::token_metadata(token)
+}
+
 
 #[update]
 #[candid_method(update)]

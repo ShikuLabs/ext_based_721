@@ -117,6 +117,7 @@ pub struct AllowanceRequest {
 pub struct MintRequest {
     pub to: User,
     pub metadata: Option<Vec<u8>>,
+    pub class: String,
 }
 
 #[derive(Debug, CandidType, Clone, Deserialize)]

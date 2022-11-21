@@ -7,6 +7,7 @@ mod prop;
 use crate::module::dip721;
 use crate::module::token_identifier;
 use crate::module::types::*;
+use cap_sdk::IndefiniteEvent;
 
 #[init]
 #[candid_method(init)]
@@ -20,15 +21,17 @@ fn init_prop() -> Vec<prop::PropMetadata> {
     prop::init()
 }
 
+
+#[allow(non_snake_case)]
 #[update]
 #[candid_method(update)]
-fn mintNFT(mint_request: MintRequest, class: Option<String>) -> TokenIndex {
-    mint_internal(mint_request, class)
+fn mintNFT(mint_request: MintRequest) -> TokenIndex {
+    mint_internal(mint_request)
 }
 
-fn mint_internal(mint_request: MintRequest, class: Option<String>) -> TokenIndex {
+fn mint_internal(mint_request: MintRequest) -> TokenIndex {
     let token_id = dip721::new_token_id();
-
+    let class = mint_request.class;
     let pid = ic_cdk::api::id();
     let cid = token_identifier::CanisterId(pid);
     let encode_idx = token_identifier::TokenIndex(token_id as u32);
@@ -46,7 +49,7 @@ fn mint_internal(mint_request: MintRequest, class: Option<String>) -> TokenIndex
     let properties = prop::with(|props| {
         props
             .iter()
-            .filter(|p| *p.class() == class.clone().unwrap())
+            .filter(|p| *p.class() == class)
             .map(|p| {
                 vec![
                     (
@@ -69,6 +72,12 @@ fn mint_internal(mint_request: MintRequest, class: Option<String>) -> TokenIndex
 
     let res = dip721::dip721_mint(to, arg_mint, properties);
     res.unwrap().to_string().parse::<u32>().unwrap()
+}
+
+#[query]
+#[candid_method(query)]
+pub fn token_identifier(id: Nat) -> String {
+    prop::tokens(&id)
 }
 
 #[query]
@@ -99,30 +108,30 @@ pub fn metadata(token: token_identifier::TokenIdentifier) -> Option<TokenMetaDat
                     GeneralValue::Nat64Content(data.minted_at),
                 ),
                 ("minted_by".into(), GeneralValue::Principal(data.minted_by)),
-                (
-                    "transferred_at".into(),
-                    GeneralValue::Nat64Content(data.transferred_at.unwrap()),
-                ),
-                (
-                    "transferred_by".into(),
-                    GeneralValue::Principal(data.transferred_by.unwrap()),
-                ),
-                (
-                    "approved_at".into(),
-                    GeneralValue::Nat64Content(data.approved_at.unwrap()),
-                ),
-                (
-                    "approved_by".into(),
-                    GeneralValue::Principal(data.approved_by.unwrap()),
-                ),
-                (
-                    "burned_at".into(),
-                    GeneralValue::Nat64Content(data.burned_at.unwrap()),
-                ),
-                (
-                    "burned_by".into(),
-                    GeneralValue::Principal(data.burned_by.unwrap()),
-                ),
+                // (
+                //     "transferred_at".into(),
+                //     GeneralValue::Nat64Content(data.transferred_at.unwrap()),
+                // ),
+                // (
+                //     "transferred_by".into(),
+                //     GeneralValue::Principal(data.transferred_by.unwrap()),
+                // ),
+                // (
+                //     "approved_at".into(),
+                //     GeneralValue::Nat64Content(data.approved_at.unwrap()),
+                // ),
+                // (
+                //     "approved_by".into(),
+                //     GeneralValue::Principal(data.approved_by.unwrap()),
+                // ),
+                // (
+                //     "burned_at".into(),
+                //     GeneralValue::Nat64Content(data.burned_at.unwrap()),
+                // ),
+                // (
+                //     "burned_by".into(),
+                //     GeneralValue::Principal(data.burned_by.unwrap()),
+                // ),
             ]);
 
             let value = match serde_json::to_vec(&nest_value) {
@@ -137,6 +146,74 @@ pub fn metadata(token: token_identifier::TokenIdentifier) -> Option<TokenMetaDat
         Err(_) => None,
     }
 }
+
+#[allow(non_snake_case)]
+#[query]
+#[candid_method(query)]
+pub fn getTokens() -> Vec<(TokenIndex, TokenMetaDataExt)> {
+    let mut res = Vec::new();
+    let num = dip721::dip721_total_supply().to_string().parse::<u32>().unwrap();
+    for item in 1..(num + 1) {
+        match get_token_metadata_by_u32(item.to_owned()) {
+            Ok(token) => {
+                let token_metadata = 
+                TokenMetaDataExt::nonfungible({
+                    MetaDataNonFungibleDetails {
+                        metadata: Some(token),
+                    }
+                });
+                res.push((item.to_owned(), token_metadata.to_owned()));
+            }
+            Err(_) => {}
+        };
+    }
+    res
+ }
+
+fn get_token_metadata_by_u32(id: u32) -> Result<Vec<u8>, CommonError> {
+    let pid = ic_cdk::api::id();
+    let cid = token_identifier::CanisterId(pid);
+    let encode_idx = token_identifier::TokenIndex(id);
+    let encoded_token = token_identifier::encode_token_id(cid, encode_idx);
+    let metadata = dip721::dip721_token_metadata(Nat::from(id));
+    let res = match metadata {
+        Ok(data) => {
+            let nest_value = GeneralValue::NestedContent(vec![
+                (
+                    "token_identifier".into(),
+                    GeneralValue::NatContent(data.token_identifier),
+                ),
+                (
+                    "is_burned".into(),
+                    GeneralValue::BoolContent(data.is_burned),
+                ),
+                (
+                    "properties".into(),
+                    GeneralValue::NestedContent(data.properties),
+                ),
+                (
+                    "minted_at".into(),
+                    GeneralValue::Nat64Content(data.minted_at),
+                ),
+                ("minted_by".into(), GeneralValue::Principal(data.minted_by)),
+            ]); 
+            let value = match serde_json::to_vec(&nest_value) {
+                Ok(v) => Some(v),
+                Err(_) => None,
+            };
+            value
+        },
+        Err(_) => return Err(CommonError::InvalidToken(encoded_token)),
+    };
+    Ok(res.unwrap())
+}
+
+#[query]
+#[candid_method(query)]
+fn supply() -> Result_2 {
+    Result_2::ok(dip721::dip721_total_supply())
+}
+
 
 #[update]
 #[candid_method(update)]
@@ -205,24 +282,31 @@ fn add(args: String) -> bool {
     true
 }
 
+#[query]
+#[candid_method(query)]
+fn pending_transactions() -> Vec<IndefiniteEvent> {
+    cap_sdk::pending_transactions()
+}
+
+
 #[update]
 #[candid_method(update)]
 fn batch_mint(
     mint_request: MintRequest,
-    class: Option<String>,
     num: Option<u32>,
 ) -> Vec<TokenIndex> {
     let mut tids = vec![];
 
     if let Some(num) = num {
         for _i in 0..num {
-            let tid = mint_internal(mint_request.clone(), class.clone());
+            let tid = mint_internal(mint_request.clone());
             tids.push(tid)
         }
     };
     tids
 }
-
+#[update]
+#[candid_method(update)]
 fn batch_transfer(transfer_request: TransferRequest, num: Option<u32>) -> TransferResponse {
     if let Some(num) = num {
         for _i in 0..num {

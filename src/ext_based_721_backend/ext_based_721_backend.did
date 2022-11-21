@@ -1,0 +1,90 @@
+type ApproveRequest = record {
+  token : text;
+  subaccount : opt vec nat8;
+  allowance : nat;
+  spender : principal;
+};
+type CommonError = variant { InvalidToken : text; Other : text };
+type DetailValue = variant {
+  I64 : int64;
+  U64 : nat64;
+  Vec : vec DetailValue;
+  Slice : vec nat8;
+  TokenIdU64 : nat64;
+  Text : text;
+  True;
+  False;
+  Float : float64;
+  Principal : principal;
+};
+type IndefiniteEvent = record {
+  operation : text;
+  details : vec record { text; DetailValue };
+  caller : principal;
+};
+type InitArgs = record {
+  cap : opt principal;
+  logo : opt text;
+  name : opt text;
+  custodians : opt vec principal;
+  symbol : opt text;
+};
+type MetaDataFungibleDetails = record {
+  decimals : nat8;
+  metadata : opt vec nat8;
+  name : text;
+  symbol : text;
+};
+type MetaDataNonFungibleDetails = record { metadata : opt vec nat8 };
+type MintRequest = record { to : User; metadata : opt vec nat8; class : text };
+type NftError = variant {
+  UnauthorizedOperator;
+  SelfTransfer;
+  TokenNotFound;
+  UnauthorizedOwner;
+  SelfApprove;
+  OperatorNotFound;
+  ExistedNFT;
+  OwnerNotFound;
+};
+type PropMetadata = record { image_uri : text; calss : text; desc : text };
+type Result = variant { Ok : nat; Err : NftError };
+type Result_2 = variant { ok : nat; err : CommonError };
+type TokenMetaDataExt = variant {
+  fungible : MetaDataFungibleDetails;
+  nonfungible : MetaDataNonFungibleDetails;
+};
+type TransferRequest = record {
+  to : User;
+  token : text;
+  notify : bool;
+  from : User;
+  memo : vec nat8;
+  subaccount : opt vec nat8;
+  amount : nat;
+};
+type TransferResponse = variant { ok : nat; err : TransferResponseDetails };
+type TransferResponseDetails = variant {
+  CannotNotify : text;
+  InsufficientBalance;
+  InvalidToken : text;
+  Rejected;
+  Unauthorized : text;
+  Other : text;
+};
+type User = variant { "principal" : principal; address : text };
+service : (opt InitArgs) -> {
+  add : (text) -> (bool);
+  approve : (ApproveRequest) -> (bool);
+  batch_mint : (MintRequest, opt nat32) -> (vec nat32);
+  batch_transfer : (TransferRequest, opt nat32) -> (TransferResponse);
+  burn : (nat) -> (Result);
+  getTokens : () -> (vec record { nat32; TokenMetaDataExt }) query;
+  init_prop : () -> (vec PropMetadata);
+  metadata : (text) -> (opt TokenMetaDataExt) query;
+  mintNFT : (MintRequest) -> (nat32);
+  pending_transactions : () -> (vec IndefiniteEvent) query;
+  supply : () -> (Result_2) query;
+  token_identifier : (nat) -> (text) query;
+  transfer : (TransferRequest) -> (TransferResponse);
+}

@@ -7,9 +7,9 @@ use serde_json::Result;
 use std::collections::HashMap;
 pub static PROP_STR: &str =r###"
     [
-        {"desc":"The basic element that makes up the world-hydrogen. General purpose in SHIKU games","imageUri": "https://storageapi.fleek.co/zimhook-team-bucket/Yumi/530x640.jpg","calss":"art"},
-        {"desc":"The basic element that makes up the world-Helium. General purpose in SHIKU games","imageUri": "https://storageapi.fleek.co/zimhook-team-bucket/Yumi/530x640(2).jpg","calss":"art"},
-        {"desc":"The basic element that makes up the world-Lithium. General purpose in SHIKU games","imageUri": "https://storageapi.fleek.co/zimhook-team-bucket/Yumi/530x640(3).jpg","calss":"art"},
+        {"desc":"The basic element that makes up the world-hydrogen. General purpose in SHIKU games","image_uri": "https://storageapi.fleek.co/zimhook-team-bucket/Yumi/530x640.jpg","calss":"H"},
+        {"desc":"The basic element that makes up the world-Helium. General purpose in SHIKU games","image_uri": "https://storageapi.fleek.co/zimhook-team-bucket/Yumi/530x640(2).jpg","calss":"He"},
+        {"desc":"The basic element that makes up the world-Lithium. General purpose in SHIKU games","image_uri": "https://storageapi.fleek.co/zimhook-team-bucket/Yumi/530x640(3).jpg","calss":"Li"}
     ]
     "###;
     
@@ -85,5 +85,14 @@ pub fn add_token(id: &Nat, prop: &String) {
 pub fn add_prop(id: &Nat, prop: &PropMetadata) {
     ID2PROP.with(|propmap| {
         propmap.borrow_mut().insert(id.to_owned(), prop.clone());
+    })
+}
+
+pub fn tokens(id: &Nat) -> String {
+    ID2TOKEN.with(|tokenmap|{
+        match tokenmap.borrow().get(id) {
+            Some(tokenid) => tokenid.to_owned(),
+            None => "".into(),
+        }
     })
 }

@@ -1,7 +1,7 @@
 
 use candid::{CandidType, Deserialize, Principal};
 
-use crate::module::types::CommonError;
+use crate::module::types::{CommonError};
 
 pub const CANISTER_ID_HASH_LEN_IN_BYTES: usize = 10;
 const TOKEN_ID_PREFIX: [u8; 4] = [10, 116, 105, 100]; //b"\x0Atid"

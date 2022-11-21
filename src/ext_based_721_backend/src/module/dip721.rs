@@ -116,6 +116,16 @@ pub fn dip721_mint(
 ) -> Result<Nat, NftError> {
     ledger::with_mut(|ledger| {
         let caller = ic_cdk::api::caller();
+        if properties.is_empty() {
+            insert_sync(IndefiniteEvent {
+                caller: ic_cdk::api::caller(),
+                operation: "verify properites".into(),
+                details: vec![(
+                    "properties has no metadata".into(),
+                    DetailValue::from(token_identifier.clone()),
+                )],
+            });
+        }
         if !ledger.is_token_existed(&token_identifier).not() {
             insert_sync(IndefiniteEvent {
                 caller: ic_cdk::api::caller(),

@@ -73,27 +73,3 @@ demo:
      subaccount=opt vec {0};
       amount=1;})" 
 ```
-###  set_developer : (text, TeamInfo) -> (GameInfo);
-```
- set game developer information
-input params: text =>game id. to find out the game id which you want to set developer info
-Teaminfo => the developer information 
-```
-###  set_name : (text, text) -> (GameInfo);
-```
- set game name
- input params: text =>game id. to find out the game id which you want to set the game name
- text => the game name
-```
-###  set_publisher : (text, TeamInfo) -> (GameInfo); 
-```
-set game publisher informatioin
-input params: text =>game id. to find out the game id which you want to set publish info
-Teaminfo => the publish information 
-```
-###  set_url : (text, text) -> (GameInfo);
-```
- set game url
-input params:text =>game id. to find out the game id which you want to set the game url
-text => the game url 
-```

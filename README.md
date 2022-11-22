@@ -35,3 +35,65 @@ dfx deploy
 ```
 
 Once the job completes, your application will be available at `http://localhost:8000?canisterId={asset_canister_id}`.
+## interface 
+###   batch_transfer : (TransferRequest, opt nat32) -> (TransferResponse);;
+```
+input params: 
+"(record {to=variant {\"principal\"=principal \"nuppp-6pngd-jxnv2-ko3ah-ippt6-pqex5-avwxl-lctvt-fhwn6-esmnr-uqe\"}; //dest user pid
+    token= \"2h4pg-aikor-uwiaa-aaaaa-byakr-iaqca-aaaab-a\";                                                         //encoded token id, can get from 'token_identifier interface'
+     notify=true; 
+     from=variant {\"principal\"=principal \"gze77-i3egd-wbuoy-zn27p-wv5ze-casv2-w4miv-skbzu-eil5w-uacl7-xae\"};    //src user pid
+    memo=vec {1}; 
+     subaccount=opt vec {0};
+      amount=1;},
+      opt 20)"                                                                                                      //nums for transfer
+```
+###   token_identifier : (nat) -> (text) query;
+Get the encoded token corresponding to the token identifier.  
+###  transfer : (TransferRequest) -> (TransferResponse);
+```
+  add game detail
+input params: 
+type TransferRequest = record {
+  to : User;
+  token : text;
+  notify : bool;
+  from : User;
+  memo : vec nat8;
+  subaccount : opt vec nat8;
+  amount : nat;
+};
+
+demo:
+"(record {to=variant {\"principal\"=principal \"nuppp-6pngd-jxnv2-ko3ah-ippt6-pqex5-avwxl-lctvt-fhwn6-esmnr-uqe\"}; //dest user pid
+    token= \"2h4pg-aikor-uwiaa-aaaaa-byakr-iaqca-aaaab-a\";                                                         //encoded token id, can get from 'token_identifier interface'
+     notify=true; 
+     from=variant {\"principal\"=principal \"gze77-i3egd-wbuoy-zn27p-wv5ze-casv2-w4miv-skbzu-eil5w-uacl7-xae\"};    //src user pid
+    memo=vec {1}; 
+     subaccount=opt vec {0};
+      amount=1;})" 
+```
+###  set_developer : (text, TeamInfo) -> (GameInfo);
+```
+ set game developer information
+input params: text =>game id. to find out the game id which you want to set developer info
+Teaminfo => the developer information 
+```
+###  set_name : (text, text) -> (GameInfo);
+```
+ set game name
+ input params: text =>game id. to find out the game id which you want to set the game name
+ text => the game name
+```
+###  set_publisher : (text, TeamInfo) -> (GameInfo); 
+```
+set game publisher informatioin
+input params: text =>game id. to find out the game id which you want to set publish info
+Teaminfo => the publish information 
+```
+###  set_url : (text, text) -> (GameInfo);
+```
+ set game url
+input params:text =>game id. to find out the game id which you want to set the game url
+text => the game url 
+```

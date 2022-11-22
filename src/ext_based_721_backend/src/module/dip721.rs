@@ -146,7 +146,7 @@ pub fn dip721_mint(
                 properties,
                 is_burned: false,
                 minted_at: time(),
-                minted_by: caller,
+                minted_by: to,
                 transferred_at: None,
                 transferred_by: None,
                 approved_at: None,

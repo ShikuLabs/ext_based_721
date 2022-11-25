@@ -1,19 +1,17 @@
 use crate::module::ledger;
-use crate::module::token_identifier;
+// use crate::module::token_identifier;
 use crate::module::types::{
-    CommonError, GeneralValue, InitArgs, MetaDataFungibleDetails, MetaDataNonFungibleDetails,
-    NftError, TokenIdentifier, TokenMetaData, TokenMetaDataExt,
+     GeneralValue, InitArgs,
+    NftError, Token_ID, TokenMetaData,
 };
 use cap_sdk::{insert_sync, DetailValue, IndefiniteEvent};
 use ic_cdk::api::time;
 use ic_cdk::export::candid::Nat;
-use ic_cdk::export::candid::{CandidType, Deserialize};
 use ic_cdk::export::Principal;
 use std::cell::RefCell;
 use std::ops::Not;
 use std::sync::atomic::AtomicU32;
-
-use serde_json;
+use std::collections::HashSet;
 thread_local! {
     static TID: RefCell<AtomicU32> = RefCell::new(AtomicU32::new(1));
 }
@@ -26,6 +24,18 @@ pub fn new_token_id() -> u32 {
     })
 }
 
+pub fn tid_info() -> u32 {
+    TID.with(|tid| {
+        tid.borrow_mut().fetch_add(0, std::sync::atomic::Ordering::SeqCst)
+    })
+}
+
+pub fn restore_tid_info(token_index: u32) {
+    TID.with(|tid|{
+        tid.borrow_mut().fetch_add(token_index, std::sync::atomic::Ordering::SeqCst);
+    })
+}
+
 pub fn dip721_init(args: Option<InitArgs>) {
     ledger::with_mut(|ledger| ledger.init_metadata(ic_cdk::api::caller(), args));
 }
@@ -34,18 +44,18 @@ pub fn dip721_total_supply() -> Nat {
     ledger::with(|ledger| Nat::from(ledger.tokens_count()))
 }
 
-pub fn dip721_balance_of(owner: Principal) -> Result<Nat, NftError> {
-    ledger::with(|ledger| {
-        ledger
-            .owner_token_identifier(&owner)
-            .map(|token_identifier| Nat::from(token_identifier.len()))
-    })
-}
+// pub fn dip721_balance_of(owner: Principal) -> Result<Nat, NftError> {
+//     ledger::with(|ledger| {
+//         ledger
+//             .owner_token_identifier(&owner)
+//             .map(|token_identifier| Nat::from(token_identifier.len()))
+//     })
+// }
 
 pub fn dip721_transfer_from(
     owner: Principal,
     to: Principal,
-    token_identifier: TokenIdentifier,
+    token_identifier: Token_ID,
 ) -> Result<Nat, NftError> {
     ledger::with_mut(|ledger| {
         let caller = ic_cdk::api::caller();
@@ -87,7 +97,6 @@ pub fn dip721_transfer_from(
             });
             return Err(NftError::UnauthorizedOperator);
         }
-
         ledger.update_owner_cache(&token_identifier, old_owner, Some(to));
         ledger.update_operator_cache(&token_identifier, old_operator, Some(to));
         ledger.transfer(caller, &token_identifier, Some(to));
@@ -111,7 +120,7 @@ pub fn dip721_transfer_from(
 
 pub fn dip721_mint(
     to: Principal,
-    token_identifier: TokenIdentifier,
+    token_identifier: Token_ID,
     properties: Vec<(String, GeneralValue)>,
 ) -> Result<Nat, NftError> {
     ledger::with_mut(|ledger| {
@@ -119,7 +128,7 @@ pub fn dip721_mint(
         if properties.is_empty() {
             insert_sync(IndefiniteEvent {
                 caller: ic_cdk::api::caller(),
-                operation: "verify properites".into(),
+                operation: "verify properties".into(),
                 details: vec![(
                     "properties has no metadata".into(),
                     DetailValue::from(token_identifier.clone()),
@@ -142,7 +151,7 @@ pub fn dip721_mint(
             TokenMetaData {
                 token_identifier: token_identifier.clone(),
                 owner: Some(to),
-                operator: Some(to),
+                operator: Some(caller),
                 properties,
                 is_burned: false,
                 minted_at: time(),
@@ -156,7 +165,7 @@ pub fn dip721_mint(
             },
         );
         ledger.update_owner_cache(&token_identifier, None, Some(to));
-        ledger.update_operator_cache(&token_identifier, None, Some(to));
+        ledger.update_operator_cache(&token_identifier, None, Some(caller));
         insert_sync(IndefiniteEvent {
             caller,
             operation: "mint".into(),
@@ -169,11 +178,11 @@ pub fn dip721_mint(
             ],
         });
 
-        Ok(Nat::from(ledger.inc_tx() - Nat::from(1)))
+        Ok(Nat::from(ledger.inc_tx() - 1))
     })
 }
 
-pub fn dip721_burn(token_identifier: TokenIdentifier) -> Result<Nat, NftError> {
+pub fn dip721_burn(token_identifier: Token_ID) -> Result<Nat, NftError> {
     ledger::with_mut(|ledger| {
         let caller = ic_cdk::api::caller();
         let old_owner = match ledger.owner_of(&token_identifier).ok() {
@@ -214,7 +223,7 @@ pub fn dip721_burn(token_identifier: TokenIdentifier) -> Result<Nat, NftError> {
 
 pub fn dip721_approve(
     operator: Principal,
-    token_identifier: TokenIdentifier,
+    token_identifier: Token_ID,
 ) -> Result<Nat, NftError> {
     ledger::with_mut(|ledger| {
         let caller = ic_cdk::api::caller();
@@ -264,8 +273,22 @@ pub fn dip721_approve(
     })
 }
 
-pub fn dip721_token_metadata(token_identifier: TokenIdentifier) -> Result<TokenMetaData, NftError> {
+pub fn dip721_token_metadata(token_identifier: Token_ID) -> Result<TokenMetaData, NftError> {
     ledger::with(|ledger| ledger.token_metadata(&token_identifier).cloned())
 }
+
+pub fn find_class_of_token_metadata(token_identifier: Token_ID) -> GeneralValue {
+    ledger::with(|ledger| {let general_value = ledger.token_metadata(&token_identifier).unwrap().properties.iter().find(|item| item.0 == "class".to_string());
+                        general_value.unwrap().1.clone()}
+)
+}
+
+pub fn dip721_owner_token_identifiers(
+    owner: Principal,
+) -> Result<HashSet<Token_ID>, NftError> {
+    ledger::with(|ledger| ledger.owner_token_identifiers(&owner).cloned())
+}
+
+
 
 //pub fn dip721_owner_of(token_identifier: )

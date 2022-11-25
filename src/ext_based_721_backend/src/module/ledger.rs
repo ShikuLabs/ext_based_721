@@ -24,9 +24,9 @@ pub fn with_mut<T, F: FnOnce(&mut Ledger) -> T>(f: F) -> T {
 #[derive(CandidType, Default, Deserialize)]
 pub struct Ledger {
     pub metadata: MetaData,
-    pub tokens: HashMap<TokenIdentifier, TokenMetaData>,
-    pub owners: HashMap<Principal, HashSet<TokenIdentifier>>,
-    pub operators: HashMap<Principal, HashSet<TokenIdentifier>>,
+    pub tokens: HashMap<Token_ID, TokenMetaData>,
+    pub owners: HashMap<Principal, HashSet<Token_ID>>,
+    pub operators: HashMap<Principal, HashSet<Token_ID>>,
     pub tx_count: Nat,
 }
 
@@ -52,9 +52,9 @@ impl Ledger {
         metadata.upgraded_at = time();
     }
 
-    pub fn metadata(&self) -> &MetaData {
-        &self.metadata
-    }
+    // pub fn metadata(&self) -> &MetaData {
+    //     &self.metadata
+    // }
 
     pub fn metadata_mut(&mut self) -> &mut MetaData {
         &mut self.metadata
@@ -64,13 +64,20 @@ impl Ledger {
         self.tokens.len()
     }
 
-    pub fn is_token_existed(&self, token_identifier: &TokenIdentifier) -> bool {
+    pub fn is_token_existed(&self, token_identifier: &Token_ID) -> bool {
         self.tokens.contains_key(token_identifier)
+    }
+
+    pub fn owner_token_identifiers(
+        &self,
+        owner: &Principal,
+    ) -> Result<&HashSet<Token_ID>, NftError> {
+        self.owners.get(owner).ok_or(NftError::OwnerNotFound)
     }
 
     pub fn token_metadata(
         &self,
-        token_identifier: &TokenIdentifier,
+        token_identifier: &Token_ID,
     ) -> Result<&TokenMetaData, NftError> {
         self.tokens
             .get(token_identifier)
@@ -79,26 +86,19 @@ impl Ledger {
 
     pub fn add_token_metadata(
         &mut self,
-        token_identifier: TokenIdentifier,
+        token_identifier: Token_ID,
         token_metadata: TokenMetaData,
     ) {
         self.tokens.insert(token_identifier, token_metadata);
     }
 
-    pub fn owners_count(&self) -> usize {
-        self.owners.len()
-    }
-
-    pub fn owner_token_identifier(
-        &self,
-        owner: &Principal,
-    ) -> Result<&HashSet<TokenIdentifier>, NftError> {
-        self.owners.get(owner).ok_or(NftError::OwnerNotFound)
-    }
+    // pub fn owners_count(&self) -> usize {
+    //     self.owners.len()
+    // }
 
     pub fn owner_of(
         &self,
-        token_identifier: &TokenIdentifier
+        token_identifier: &Token_ID
     ) -> Result<Option<Principal>, NftError> {
         self.token_metadata(token_identifier)
             .map(|token_metadata| token_metadata.owner)
@@ -106,7 +106,7 @@ impl Ledger {
 
     pub fn update_owner_cache(
         &mut self,
-        token_identifier: &TokenIdentifier,
+        token_identifier: &Token_ID,
         old_owner: Option<Principal>,
         new_owner: Option<Principal>,
     ) {
@@ -129,18 +129,18 @@ impl Ledger {
         }
     }
 
-    pub fn operator_token_identifier(
-        &self,
-        operator: &Principal,
-    ) -> Result<&HashSet<TokenIdentifier>, NftError> {
-        self.operators
-            .get(operator)
-            .ok_or(NftError::OperatorNotFound)
-    }
+    // pub fn operator_token_identifier(
+    //     &self,
+    //     operator: &Principal,
+    // ) -> Result<&HashSet<Token_ID>, NftError> {
+    //     self.operators
+    //         .get(operator)
+    //         .ok_or(NftError::OperatorNotFound)
+    // }
 
     pub fn operator_of(
         &self,
-        token_identifier: &TokenIdentifier,
+        token_identifier: &Token_ID,
     ) -> Result<Option<Principal>, NftError> {
         self.token_metadata(token_identifier)
             .map(|token_metadata| token_metadata.operator)
@@ -148,7 +148,7 @@ impl Ledger {
 
     pub fn update_operator_cache(
         &mut self,
-        token_identifier: &TokenIdentifier,
+        token_identifier: &Token_ID,
         old_operator: Option<Principal>,
         new_operator: Option<Principal>,
     ) {
@@ -173,7 +173,7 @@ impl Ledger {
     pub fn approve(
         &mut self,
         approved_by: Principal,
-        token_identifier: &TokenIdentifier,
+        token_identifier: &Token_ID,
         new_operator: Option<Principal>,
     ) {
         let token_metadata = self
@@ -188,7 +188,7 @@ impl Ledger {
     pub fn transfer(
         &mut self,
         transferred_by: Principal,
-        token_identifier: &TokenIdentifier,
+        token_identifier: &Token_ID,
         new_owner: Option<Principal>,
     ) {
         let token_metadata = self
@@ -203,7 +203,7 @@ impl Ledger {
 
     pub fn burn(&mut self,
         burned_by: Principal, 
-        token_identifier: &TokenIdentifier) {
+        token_identifier: &Token_ID) {
             let token_metadata = self.
                 tokens
                 .get_mut(token_identifier)

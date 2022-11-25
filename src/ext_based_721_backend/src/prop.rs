@@ -56,10 +56,17 @@ pub fn with_mut<T, F: FnOnce(&mut Vec<PropMetadata>) -> T>(f: F) -> T {
     PROPS.with(|props| f(&mut props.borrow_mut()))
 }
 
-fn prop_info() -> Vec<PropMetadata> {
+
+pub fn prop_info() -> Vec<PropMetadata> {
     with(|prop| {
         prop.clone()
     }).to_vec()
+}
+
+pub fn restore_prop_info(prop_info: Vec<PropMetadata>) {
+    with_mut(|prop_mut| {
+        prop_info.iter().for_each(|prop| prop_mut.push(prop.to_owned()));
+    });
 }
 
 fn init_prop_info(prop_vec: Vec<PropMetadata>) {
@@ -82,11 +89,11 @@ pub fn add_token(id: &Nat, prop: &String) {
     })
 }
 
-pub fn add_prop(id: &Nat, prop: &PropMetadata) {
-    ID2PROP.with(|propmap| {
-        propmap.borrow_mut().insert(id.to_owned(), prop.clone());
-    })
-}
+// pub fn add_prop(id: &Nat, prop: &PropMetadata) {
+//     ID2PROP.with(|propmap| {
+//         propmap.borrow_mut().insert(id.to_owned(), prop.clone());
+//     })
+// }
 
 pub fn tokens(id: &Nat) -> String {
     ID2TOKEN.with(|tokenmap|{

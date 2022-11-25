@@ -4,10 +4,13 @@ use ic_cdk_macros::{init, post_upgrade, pre_upgrade, query, update};
 use prop::PropMetadata;
 mod module;
 mod prop;
+use crate::module::ledger;
 use crate::module::dip721;
 use crate::module::token_identifier;
 use crate::module::types::*;
 use cap_sdk::IndefiniteEvent;
+use ic_cdk::{api::time, trap};
+use std::collections::{HashSet};
 
 #[init]
 #[candid_method(init)]
@@ -85,7 +88,7 @@ pub fn token_identifier(id: Nat) -> String {
 pub fn metadata(token: token_identifier::TokenIdentifier) -> Option<TokenMetaDataExt> {
     let token_id = match token_identifier::decode_token_id(&token) {
         Ok(obj) => obj.index.get_value(),
-        Err(e) => return None,
+        Err(_e) => return None,
     };
     let metadata = dip721::dip721_token_metadata(Nat::from(token_id).to_owned());
     match metadata {
@@ -146,6 +149,14 @@ pub fn metadata(token: token_identifier::TokenIdentifier) -> Option<TokenMetaDat
         Err(_) => None,
     }
 }
+
+#[query]
+#[candid_method(query)]
+fn tokens_ext(principal_id: Principal) -> NFTResult {
+    let vec_u8 =  tokensext(principal_id);
+    NFTResult::ok(vec![ResultDetail(0u32, None, vec_u8)])
+}
+
 
 #[allow(non_snake_case)]
 #[query]
@@ -208,6 +219,41 @@ fn get_token_metadata_by_u32(id: u32) -> Result<Vec<u8>, CommonError> {
     Ok(res.unwrap())
 }
 
+pub fn tokensext(pid: Principal) -> Option<Vec<u8>> {
+    let mut vec_u8 = Vec::new();
+    // let pid = AccountIdentifier_shiku::from_hex(&accountid);
+    // match pid {
+    //     Ok(principal) => {
+    //         let token_identi = dip721_owner_token_identifiers(principal);
+    //         match token_identi {
+    //             Ok(token) => {
+    //                 token.iter().for_each(|id| {
+    //                     let item = get_token_metadata_by_u32(id.to_string().parse::<u32>().unwrap()).unwrap();
+    //                     vec_u8.append(item.to_owned().as_mut());
+    //                 });
+    //                 Some(vec_u8)
+    //             },
+    //             Err(_) => Some(Vec::new())
+    //         }
+    //     },
+    //     Err(_) => Some(Vec::new())
+    // }
+
+    let token_identi = dip721::dip721_owner_token_identifiers(pid);
+            match token_identi {
+                Ok(token) => {
+                    token.iter().for_each(|id| {
+                        let item = get_token_metadata_by_u32(id.to_string().parse::<u32>().unwrap()).unwrap();
+                        vec_u8.append(item.to_owned().as_mut());
+                    });
+                    Some(vec_u8)
+                },
+                Err(_) => Some(Vec::new())
+            }
+    
+}
+
+
 #[query]
 #[candid_method(query)]
 fn supply() -> Result_2 {
@@ -233,7 +279,7 @@ fn approve(approve_request: ApproveRequest) -> bool {
 
 #[update]
 #[candid_method(update)]
-fn burn(token_identifier: TokenIdentifier) -> Result<Nat, NftError> {
+fn burn(token_identifier: Token_ID) -> Result<Nat, NftError> {
     dip721::dip721_burn(token_identifier)
 }
 
@@ -247,13 +293,13 @@ fn transfer_internal(transfer_request: TransferRequest) -> TransferResponse {
     let from = transfer_request.from;
     let to = transfer_request.to;
     let token = transfer_request.token;
-    let from_pid = match from.clone() {
+    let from_pid = match from {
         User::principal(pid) => pid,
-        User::address(_aid) => Principal::anonymous(),
+        User::address(ref _aid) => Principal::anonymous(),
     };
     let to_pid = match to {
         User::principal(pid) => pid,
-        User::address(_aid) => Principal::anonymous(),
+        User::address(ref _aid) => Principal::anonymous(),
     };
     let token_obj = token_identifier::decode_token_id(&token).unwrap();
     let token_index = Nat::from(token_obj.index.get_value());
@@ -305,21 +351,136 @@ fn batch_mint(
     };
     tids
 }
+
+// #[query]
+// #[candid_method(query)]
+// fn test_batch_transfer(pid: Principal, num: usize, class: String) -> Vec<Token_ID> {
+//     dip721::dip721_owner_token_identifiers(pid.clone())
+//     .map(|token_set| {
+//         token_set.into_iter()
+//         .filter(|token_id| 
+//         dip721::find_class_of_token_metadata(token_id.to_owned()) ==GeneralValue::TextContent(class.clone())     
+//     )
+//     .collect::<Vec<_>>()
+//     })
+//     .unwrap()
+// }
+
 #[update]
 #[candid_method(update)]
-fn batch_transfer(transfer_request: TransferRequest, num: Option<u32>) -> TransferResponse {
-    if let Some(num) = num {
-        for _i in 0..num {
-            transfer_internal(transfer_request.clone());
-        }
+fn batch_transfer_v1(transfer_request: TransferRequestV1) -> Vec<Nat> {
+    let class = transfer_request.class.clone();
+    let from = transfer_request.from.clone();
+    let to = transfer_request.to;
+    let num = transfer_request.num.clone();
+    let from_pid = match from {
+        User::principal(pid) => pid,
+        User::address(ref _aid) => Principal::anonymous(),
     };
-
-    TransferResponse::ok(Nat::from(num.unwrap()))
+    let to_pid = match to {
+        User::principal(pid) => pid,
+        User::address(ref _aid) => Principal::anonymous(),
+    };
+    let owner_token_id_set = dip721::dip721_owner_token_identifiers(from_pid.clone())
+                                .map(|token_set| {
+                                    token_set.into_iter()
+                                    .filter(|token_id| 
+                                    dip721::find_class_of_token_metadata(token_id.to_owned()) ==GeneralValue::TextContent(class.clone())     
+                                )
+                                .collect::<Vec<_>>()
+                                })
+                                .unwrap();
+    
+    let mut vec_res = Vec::new();
+    for item in 0..num {
+        let res = dip721::dip721_transfer_from(from_pid, to_pid, owner_token_id_set[item].to_owned()).unwrap();
+        vec_res.push(res);
+    }
+    vec_res
 }
 
-// fn class(tid: TokenIdentifier) -> String {
+fn valid_token_id(owner_token_set: &HashSet<Nat>, list_id: &Nat) {
+    if !owner_token_set.contains(list_id) {
+        panic!("the token id not in owner's token set");
+    }
+}
 
-// }
+#[update]
+#[candid_method(update)]
+fn batch_transfer_v2(transfer_request: TransferRequestV2) -> Vec<Nat> {
+    let token_list = transfer_request.token_list;
+    let from = transfer_request.from;
+    let to = transfer_request.to;
+   
+    let from_pid = match from {
+        User::principal(pid) => pid,
+        User::address(ref _aid) => Principal::anonymous(),
+    };
+    let to_pid = match to {
+        User::principal(pid) => pid,
+        User::address(ref _aid) => Principal::anonymous(),
+    };
+
+    let hash_set = dip721::dip721_owner_token_identifiers(from_pid.clone()).unwrap();
+    token_list.iter().for_each(|id| valid_token_id(&hash_set, id));
+
+    let mut vec_res = Vec::new();
+    for item in token_list.iter() {
+        let res = dip721::dip721_transfer_from(from_pid, to_pid, item.to_owned()).unwrap();
+        vec_res.push(res);
+    }
+    vec_res
+
+}
+
+#[pre_upgrade]
+fn pre_upgrade() {
+    
+    ledger::with(|ledger| {
+        if let Err(err) = ic_cdk::storage::stable_save::<(
+            &ledger::Ledger,
+            cap_sdk::Archive,
+            u32,
+            Vec<PropMetadata>,
+        )>((
+            ledger,
+            cap_sdk::archive(),
+            dip721::tid_info(),
+            prop::prop_info(),
+        )) {
+            trap(&format!(
+                "An error occurred when saving to stable memory (pre_upgrade): {:?}",
+                err
+            ));
+        };
+    }) 
+}
+
+#[post_upgrade]
+fn post_upgrade() {
+    ledger::with_mut(|ledger| {
+        match ic_cdk::storage::stable_restore::<(
+            ledger::Ledger,
+            cap_sdk::Archive,
+            u32,
+            Vec<PropMetadata>,
+        )>() {
+            Ok((ledger_store, cap_store, tid, prop)) => {
+                *ledger = ledger_store;
+                ledger.metadata_mut().upgraded_at = time();
+                cap_sdk::from_archive(cap_store);
+                dip721::restore_tid_info(tid);
+                prop::restore_prop_info(prop);
+            }
+            Err(err) => {
+                trap(&format!(
+                    "An error occurred when loading from stable memory (post_upgrade): {:?}",
+                    err
+                ));
+            }
+        }
+    })
+}
 
 #[query(name = "__get_candid_interface_tmp_hack")]
 fn export_candid() -> String {

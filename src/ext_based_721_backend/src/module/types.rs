@@ -30,10 +30,10 @@ pub struct Status {
     pub cycles: Nat,
     pub total_unique_holders: Nat,
 }
+#[warn(non_camel_case_types)]
+pub type Token_ID = Nat;
 
-pub type TokenIdentifier = Nat;
-
-#[derive(CandidType, Deserialize, Serialize, Clone)]
+#[derive(CandidType, Deserialize, Serialize, Clone, PartialEq)]
 pub enum GeneralValue {
     BoolContent(bool),
     TextContent(String),
@@ -55,7 +55,7 @@ pub enum GeneralValue {
 
 #[derive(CandidType, Deserialize, Clone)]
 pub struct TokenMetaData {
-    pub token_identifier: TokenIdentifier,
+    pub token_identifier: Token_ID,
     pub owner: Option<Principal>,
     pub operator: Option<Principal>,
     pub is_burned: bool,
@@ -79,7 +79,6 @@ pub enum NftError {
     TokenNotFound,
     ExistedNFT,
     SelfApprove,
-    SelfTransfer,
 }
 
 /////////////// YUMI TYPES ////////////
@@ -216,6 +215,29 @@ pub struct TransferRequest {
     pub subaccount: Option<SubAccount>,
     pub to: User,
     pub token: token_identifier::TokenIdentifier,
+}
+
+#[derive(Debug, Clone, CandidType, Deserialize)]
+pub struct TransferRequestV1 {
+    pub amount: Balance,
+    pub from: User,
+    pub memo: Memo,
+    pub notify: bool,
+    pub subaccount: Option<SubAccount>,
+    pub to: User,
+    pub class: String,
+    pub num: usize,
+}
+
+#[derive(Debug, Clone, CandidType, Deserialize)]
+pub struct TransferRequestV2 {
+    pub amount: Balance,
+    pub from: User,
+    pub memo: Memo,
+    pub notify: bool,
+    pub subaccount: Option<SubAccount>,
+    pub to: User,
+    pub token_list: Vec<Token_ID>,
 }
 
 pub type Memo = Vec<u8>;

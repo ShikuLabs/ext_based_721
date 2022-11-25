@@ -2,14 +2,24 @@
 
 #$TOKEN2=$('dfx canister call ext_based_721_backend token_identifier 1')
 
-#dfx deploy --network ic --no-wallet ext_based_721_backend  --argument '(opt record{custodians=opt vec{principal "kkwoi-3jebw-6qx6z-yeah7-pgtlm-gbqdm-kkvyt-eqgbl-x3vpw-wfu2w-rqe"}; cap=opt principal "kkwoi-3jebw-6qx6z-yeah7-pgtlm-gbqdm-kkvyt-eqgbl-x3vpw-wfu2w-rqe"})'
+dfx deploy --network ic --no-wallet ext_based_721_backend  --argument '(opt record{custodians=opt vec{principal "kkwoi-3jebw-6qx6z-yeah7-pgtlm-gbqdm-kkvyt-eqgbl-x3vpw-wfu2w-rqe"}; cap=opt principal "kkwoi-3jebw-6qx6z-yeah7-pgtlm-gbqdm-kkvyt-eqgbl-x3vpw-wfu2w-rqe"})'
+dfx deploy ext_based_721_backend  --argument '(opt record{custodians=opt vec{principal "kkwoi-3jebw-6qx6z-yeah7-pgtlm-gbqdm-kkvyt-eqgbl-x3vpw-wfu2w-rqe"}; cap=opt principal "kkwoi-3jebw-6qx6z-yeah7-pgtlm-gbqdm-kkvyt-eqgbl-x3vpw-wfu2w-rqe"})'
 
 dfx canister --network ic call ext_based_721_backend batch_mint \
 "(record {to=variant {\"principal\"=principal \"gze77-i3egd-wbuoy-zn27p-wv5ze-casv2-w4miv-skbzu-eil5w-uacl7-xae\"};
     metadata=opt vec {0};
     class=\"H\";}, 
-      opt 20)"
+      opt 10)"
+dfx canister call ext_based_721_backend batch_mint \
+"(record {to=variant {\"principal\"=principal \"gze77-i3egd-wbuoy-zn27p-wv5ze-casv2-w4miv-skbzu-eil5w-uacl7-xae\"};
+    metadata=opt vec {0};
+    class=\"H\";}, 
+      opt 3)"
 
+dfx canister call ext_based_721_backend mintNFT \
+"(record {to=variant {\"principal\"=principal \"kkwoi-3jebw-6qx6z-yeah7-pgtlm-gbqdm-kkvyt-eqgbl-x3vpw-wfu2w-rqe\"};
+    metadata=opt vec {0};
+    class=\"H\";})"
 dfx canister --network ic call ext_based_721_backend batch_transfer \
 "(record {to=variant {\"principal\"=principal \"nuppp-6pngd-jxnv2-ko3ah-ippt6-pqex5-avwxl-lctvt-fhwn6-esmnr-uqe\"};
     token= \"2h4pg-aikor-uwiaa-aaaaa-byakr-iaqca-aaaab-a\";
@@ -20,3 +30,30 @@ dfx canister --network ic call ext_based_721_backend batch_transfer \
       amount=1;},
       opt 20)"
 
+dfx canister call ext_based_721_backend batch_transfer_v1 \
+"(record {to=variant {\"principal\"=principal \"nuppp-6pngd-jxnv2-ko3ah-ippt6-pqex5-avwxl-lctvt-fhwn6-esmnr-uqe\"};
+     notify=true; 
+     from=variant {\"principal\"=principal \"gze77-i3egd-wbuoy-zn27p-wv5ze-casv2-w4miv-skbzu-eil5w-uacl7-xae\"};
+    memo=vec {1}; 
+     subaccount=opt vec {0};
+      amount=1;
+      num=2;
+      class=\"H\"})"
+
+dfx canister call ext_based_721_backend transfer \
+"(record {to=variant {\"principal\"=principal \"nuppp-6pngd-jxnv2-ko3ah-ippt6-pqex5-avwxl-lctvt-fhwn6-esmnr-uqe\"};
+    token= \"6ap5a-kqkor-uwiaa-aaaaa-aaaaa-eaqca-aaaab-a\";
+     notify=true; 
+     from=variant {\"principal\"=principal \"kkwoi-3jebw-6qx6z-yeah7-pgtlm-gbqdm-kkvyt-eqgbl-x3vpw-wfu2w-rqe\"};
+    memo=vec {1}; 
+     subaccount=opt vec {0};
+      amount=1;})"
+
+dfx canister call ext_based_721_backend batch_transfer_v2 \
+"(record {to=variant {\"principal\"=principal \"nuppp-6pngd-jxnv2-ko3ah-ippt6-pqex5-avwxl-lctvt-fhwn6-esmnr-uqe\"};
+     notify=true; 
+     from=variant {\"principal\"=principal \"gze77-i3egd-wbuoy-zn27p-wv5ze-casv2-w4miv-skbzu-eil5w-uacl7-xae\"};
+    memo=vec {1}; 
+     subaccount=opt vec {0};
+      amount=1;
+      token_list=vec {4;5}})"

@@ -22,30 +22,27 @@ export const idlFactory = ({ IDL }) => {
     'metadata' : IDL.Opt(IDL.Vec(IDL.Nat8)),
     'class' : IDL.Text,
   });
-  const TransferRequest = IDL.Record({
+  const TransferRequestV1 = IDL.Record({
     'to' : User,
-    'token' : IDL.Text,
+    'num' : IDL.Nat64,
+    'notify' : IDL.Bool,
+    'from' : User,
+    'class' : IDL.Text,
+    'memo' : IDL.Vec(IDL.Nat8),
+    'subaccount' : IDL.Opt(IDL.Vec(IDL.Nat8)),
+    'amount' : IDL.Nat,
+  });
+  const TransferRequestV2 = IDL.Record({
+    'to' : User,
     'notify' : IDL.Bool,
     'from' : User,
     'memo' : IDL.Vec(IDL.Nat8),
     'subaccount' : IDL.Opt(IDL.Vec(IDL.Nat8)),
     'amount' : IDL.Nat,
-  });
-  const TransferResponseDetails = IDL.Variant({
-    'CannotNotify' : IDL.Text,
-    'InsufficientBalance' : IDL.Null,
-    'InvalidToken' : IDL.Text,
-    'Rejected' : IDL.Null,
-    'Unauthorized' : IDL.Text,
-    'Other' : IDL.Text,
-  });
-  const TransferResponse = IDL.Variant({
-    'ok' : IDL.Nat,
-    'err' : TransferResponseDetails,
+    'token_list' : IDL.Vec(IDL.Nat),
   });
   const NftError = IDL.Variant({
     'UnauthorizedOperator' : IDL.Null,
-    'SelfTransfer' : IDL.Null,
     'TokenNotFound' : IDL.Null,
     'UnauthorizedOwner' : IDL.Null,
     'SelfApprove' : IDL.Null,
@@ -96,6 +93,38 @@ export const idlFactory = ({ IDL }) => {
     'Other' : IDL.Text,
   });
   const Result_2 = IDL.Variant({ 'ok' : IDL.Nat, 'err' : CommonError });
+  const Listing = IDL.Record({
+    'locked' : IDL.Opt(IDL.Int),
+    'seller' : IDL.Principal,
+    'price' : IDL.Nat64,
+  });
+  const NFTResult = IDL.Variant({
+    'ok' : IDL.Vec(
+      IDL.Tuple(IDL.Nat32, IDL.Opt(Listing), IDL.Opt(IDL.Vec(IDL.Nat8)))
+    ),
+    'err' : CommonError,
+  });
+  const TransferRequest = IDL.Record({
+    'to' : User,
+    'token' : IDL.Text,
+    'notify' : IDL.Bool,
+    'from' : User,
+    'memo' : IDL.Vec(IDL.Nat8),
+    'subaccount' : IDL.Opt(IDL.Vec(IDL.Nat8)),
+    'amount' : IDL.Nat,
+  });
+  const TransferResponseDetails = IDL.Variant({
+    'CannotNotify' : IDL.Text,
+    'InsufficientBalance' : IDL.Null,
+    'InvalidToken' : IDL.Text,
+    'Rejected' : IDL.Null,
+    'Unauthorized' : IDL.Text,
+    'Other' : IDL.Text,
+  });
+  const TransferResponse = IDL.Variant({
+    'ok' : IDL.Nat,
+    'err' : TransferResponseDetails,
+  });
   return IDL.Service({
     'add' : IDL.Func([IDL.Text], [IDL.Bool], []),
     'approve' : IDL.Func([ApproveRequest], [IDL.Bool], []),
@@ -104,11 +133,8 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(IDL.Nat32)],
         [],
       ),
-    'batch_transfer' : IDL.Func(
-        [TransferRequest, IDL.Opt(IDL.Nat32)],
-        [TransferResponse],
-        [],
-      ),
+    'batch_transfer_v1' : IDL.Func([TransferRequestV1], [IDL.Vec(IDL.Nat)], []),
+    'batch_transfer_v2' : IDL.Func([TransferRequestV2], [IDL.Vec(IDL.Nat)], []),
     'burn' : IDL.Func([IDL.Nat], [Result], []),
     'getTokens' : IDL.Func(
         [],
@@ -125,6 +151,7 @@ export const idlFactory = ({ IDL }) => {
       ),
     'supply' : IDL.Func([], [Result_2], ['query']),
     'token_identifier' : IDL.Func([IDL.Nat], [IDL.Text], ['query']),
+    'tokens_ext' : IDL.Func([IDL.Principal], [NFTResult], ['query']),
     'transfer' : IDL.Func([TransferRequest], [TransferResponse], []),
   });
 };

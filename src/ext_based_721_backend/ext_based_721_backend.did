@@ -44,7 +44,6 @@ type NFTResult = variant {
 };
 type NftError = variant {
   UnauthorizedOperator;
-  SelfTransfer;
   TokenNotFound;
   UnauthorizedOwner;
   SelfApprove;
@@ -110,7 +109,6 @@ service : (opt InitArgs) -> {
   mintNFT : (MintRequest) -> (nat32);
   pending_transactions : () -> (vec IndefiniteEvent) query;
   supply : () -> (Result_2) query;
-  test_batch_transfer : (principal, nat64, text) -> (vec nat) query;
   token_identifier : (nat) -> (text) query;
   tokens_ext : (principal) -> (NFTResult) query;
   transfer : (TransferRequest) -> (TransferResponse);
